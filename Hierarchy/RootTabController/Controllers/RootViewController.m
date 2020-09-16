@@ -32,7 +32,7 @@ NSString * const kModalPresentationDescription = @"kModalPresentationDescription
  
  */
 
-@interface RootViewController () <UITableViewDataSource, UITableViewDelegate>
+@interface RootViewController () <UITableViewDataSource, UITableViewDelegate, UIPopoverPresentationControllerDelegate, UIAdaptivePresentationControllerDelegate>
 
 @property (nonatomic, strong) NSArray <NSDictionary *> *dataSources;
 @property (weak, nonatomic) IBOutlet UITableView *tableView;
@@ -85,6 +85,7 @@ NSString * const kModalPresentationDescription = @"kModalPresentationDescription
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     NSDictionary *info = self.dataSources[indexPath.row];
     UIModalPresentationStyle modalStyle = [info[kModalPresentationStyle] integerValue];
+    
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [tableView deselectRowAtIndexPath:indexPath animated:YES];
         if (modalStyle == UIModalPresentationNone) {
@@ -93,6 +94,14 @@ NSString * const kModalPresentationDescription = @"kModalPresentationDescription
         PresentedController *presentedController = [[PresentedController alloc] init];
         NavigationController *nav = [[NavigationController alloc] initWithRootViewController:presentedController];
         nav.modalPresentationStyle = modalStyle;
+        
+        if (modalStyle == UIModalPresentationPopover) {
+            UIPopoverPresentationController *popover = nav.popoverPresentationController;
+            popover.delegate = self;
+            popover.sourceView = [tableView cellForRowAtIndexPath:indexPath];
+            popover.sourceRect = [tableView cellForRowAtIndexPath:indexPath].bounds;
+        }
+        
         [self presentViewController:nav animated:YES completion:^{
             presentedController.title = info[kModalPresentationName];
             presentedController.modalStyleDescription = info[kModalPresentationDescription];
@@ -100,63 +109,75 @@ NSString * const kModalPresentationDescription = @"kModalPresentationDescription
     });
 }
 
+#pragma mark - UIAdaptivePresentationControllerDelegate
+
+- (UIModalPresentationStyle)adaptivePresentationStyleForPresentationController:(UIPresentationController *)controller {
+    // 取消自适应
+    return UIModalPresentationNone;
+}
+
 #pragma mark - lazy
 
 - (NSArray<NSDictionary *> *)dataSources {
     if (!_dataSources) {
-        _dataSources = @[
-            @{
-                kModalPresentationStyle: @(UIModalPresentationAutomatic),
-                kModalPresentationName: @"UIModalPresentationAutomatic",
-                kModalPresentationDescription: @"iOS 13+ 默认样式"
-            },
-            @{
-                kModalPresentationStyle: @(UIModalPresentationFullScreen),
-                kModalPresentationName: @"UIModalPresentationFullScreen",
-                kModalPresentationDescription: @"UIKit默认的presentation style。 使用这种模式时，presented VC的宽高与屏幕相同，并且UIKit会直接使用rootViewController做为presentation context，在此次presentation完成之后，UIKit会将presentation context及其子VC都移出UI栈，这时候观察VC的层级关系，会发现UIWindow下只有presented VC.\n使用了此类型后, 在dismiss 后, presenting的`viewWillAppear`和`viewWillDisappear`回调会被触发, 因为指定为 UIModalPresentationFullScreen TabBarController会从视图栈移除, dismiss后重新回到视图栈"
-            }
-            ,
-            @{
-                kModalPresentationStyle: @(UIModalPresentationOverFullScreen),
-                kModalPresentationName: @"UIModalPresentationOverFullScreen",
-                kModalPresentationDescription: @"与UIModalPresentationFullScreen的唯一区别在于，UIWindow下除了presented VC，还有其他正常的VC层级关系。也就是说该模式下，UIKit以rootViewController为presentation context，但presentation完成之后不会讲rootViewController移出当前的UI栈。\n使用了此类型后, 在dismiss 后, presenting的`viewWillAppear`和`viewWillDisappear`回调不再被触发"
-            },
-            @{
-                kModalPresentationStyle: @(UIModalPresentationPageSheet),
-                kModalPresentationName: @"UIModalPresentationPageSheet",
-                kModalPresentationDescription: @""
-            },
-            @{
-                kModalPresentationStyle: @(UIModalPresentationFormSheet),
-                kModalPresentationName: @"UIModalPresentationFormSheet",
-                kModalPresentationDescription: @""
-            },
-            @{
-                kModalPresentationStyle: @(UIModalPresentationPopover),
-                kModalPresentationName: @"UIModalPresentationPopover",
-                kModalPresentationDescription: @""
-            },
-            @{
-                kModalPresentationStyle: @(UIModalPresentationCurrentContext),
-                kModalPresentationName: @"UIModalPresentationCurrentContext",
-                kModalPresentationDescription: @""
-            },
-            @{
-                kModalPresentationStyle: @(UIModalPresentationOverCurrentContext),
-                kModalPresentationName: @"UIModalPresentationOverCurrentContext",
-                kModalPresentationDescription: @""
-            },
-            @{
-                kModalPresentationStyle: @(UIModalPresentationCustom),
-                kModalPresentationName: @"*UIModalPresentationCustom",
-                kModalPresentationDescription: @""
-            },
-            @{
-                kModalPresentationStyle: @(UIModalPresentationNone),
-                kModalPresentationName: @"*UIModalPresentationNone",
-                kModalPresentationDescription: @""
-            },
-        ];
+        if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPhone || [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+            _dataSources = @[
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationAutomatic),
+                    kModalPresentationName: @"UIModalPresentationAutomatic",
+                    kModalPresentationDescription: @"iOS 13+ 默认样式"
+                },
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationFullScreen),
+                    kModalPresentationName: @"UIModalPresentationFullScreen",
+                    kModalPresentationDescription: @"UIKit默认的presentation style。 使用这种模式时，presented VC的宽高与屏幕相同，并且UIKit会直接使用rootViewController做为presentation context，在此次presentation完成之后，UIKit会将presentation context及其子VC都移出UI栈，这时候观察VC的层级关系，会发现UIWindow下只有presented VC.\n使用了此类型后, 在dismiss 后, presenting的`viewWillAppear`和`viewWillDisappear`回调会被触发, 因为指定为 UIModalPresentationFullScreen TabBarController会从视图栈移除, dismiss后重新回到视图栈"
+                }
+                ,
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationOverFullScreen),
+                    kModalPresentationName: @"UIModalPresentationOverFullScreen",
+                    kModalPresentationDescription: @"与UIModalPresentationFullScreen的唯一区别在于，UIWindow下除了presented VC，还有其他正常的VC层级关系。也就是说该模式下，UIKit以rootViewController为presentation context，但presentation完成之后不会讲rootViewController移出当前的UI栈。\n使用了此类型后, 在dismiss 后, presenting的`viewWillAppear`和`viewWillDisappear`回调不再被触发"
+                },
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationPageSheet),
+                    kModalPresentationName: @"UIModalPresentationPageSheet",
+                    kModalPresentationDescription: @""
+                },
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationFormSheet),
+                    kModalPresentationName: @"UIModalPresentationFormSheet",
+                    kModalPresentationDescription: @""
+                },
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationPopover),
+                    kModalPresentationName: @"UIModalPresentationPopover",
+                    kModalPresentationDescription: @""
+                },
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationCurrentContext),
+                    kModalPresentationName: @"UIModalPresentationCurrentContext",
+                    kModalPresentationDescription: @""
+                },
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationOverCurrentContext),
+                    kModalPresentationName: @"UIModalPresentationOverCurrentContext",
+                    kModalPresentationDescription: @""
+                },
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationCustom),
+                    kModalPresentationName: @"*UIModalPresentationCustom",
+                    kModalPresentationDescription: @""
+                },
+                @{
+                    kModalPresentationStyle: @(UIModalPresentationNone),
+                    kModalPresentationName: @"*UIModalPresentationNone",
+                    kModalPresentationDescription: @""
+                },
+            ];
+        }
+        else {
+            _dataSources = @[];
+        }
     }
     return _dataSources;
 }
