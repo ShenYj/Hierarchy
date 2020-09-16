@@ -83,6 +83,15 @@ NSString * const kModalPresentationDescription = @"kModalPresentationDescription
 #pragma mark - UITableViewDelegate
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    /**
+     UIKit搜索presentation context的顺序为：
+     1. presenting VC
+     2. presenting VC 的父VC
+     3. presenting VC 所属的container VC
+     4. rootViewController
+
+     还有另外一种特殊情况，当我们在一个presented VC上再present一个VC时，UIKit会直接将这个presented VC做为presentation context。
+     */
     NSDictionary *info = self.dataSources[indexPath.row];
     UIModalPresentationStyle modalStyle = [info[kModalPresentationStyle] integerValue];
     
@@ -156,17 +165,17 @@ NSString * const kModalPresentationDescription = @"kModalPresentationDescription
                 @{
                     kModalPresentationStyle: @(UIModalPresentationCurrentContext),
                     kModalPresentationName: @"UIModalPresentationCurrentContext",
-                    kModalPresentationDescription: @""
+                    kModalPresentationDescription: @"使用这种方式present VC时，presented VC的宽高取决于presentation context的宽高，并且UIKit会寻找属性definesPresentationContext为YES的VC作为presentation context，具体的寻找方式会在下文中给出 。当此次presentation完成之后，presentation context及其子VC都将被暂时移出当前的UI栈。"
                 },
                 @{
                     kModalPresentationStyle: @(UIModalPresentationOverCurrentContext),
                     kModalPresentationName: @"UIModalPresentationOverCurrentContext",
-                    kModalPresentationDescription: @""
+                    kModalPresentationDescription: @"寻找presentation context的方式与UIModalPresentationCurrentContext相同，所不同的是presentation完成之后，不会将context及其子VC移出当前UI栈。但是，这种方式只适用于transition style为UIModalTransitionStyleCoverVertical的情况(UIKit默认就是这种transition style)。其他transition style下使用这种方式将会触发异常。"
                 },
                 @{
                     kModalPresentationStyle: @(UIModalPresentationCustom),
                     kModalPresentationName: @"*UIModalPresentationCustom",
-                    kModalPresentationDescription: @""
+                    kModalPresentationDescription: @"自定义模式，需要实现UIViewControllerTransitioningDelegate的相关方法，并将presented VC的transitioningDelegate 设置为实现了UIViewControllerTransitioningDelegate协议的对象。"
                 },
                 @{
                     kModalPresentationStyle: @(UIModalPresentationNone),
